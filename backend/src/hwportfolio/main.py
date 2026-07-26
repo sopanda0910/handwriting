@@ -57,3 +57,11 @@ def media(name: str):
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/api/usage")
+def usage():
+    """Today's estimated Gemini spend against the daily budget cap."""
+    from .transcribe.costs import today_usage
+
+    return today_usage()

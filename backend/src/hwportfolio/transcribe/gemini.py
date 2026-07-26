@@ -12,6 +12,8 @@ Requires HWP_GEMINI_API_KEY (or GEMINI_API_KEY in the environment).
 from __future__ import annotations
 
 import json
+import re
+import time
 
 import cv2
 import numpy as np
@@ -44,6 +46,40 @@ def _encode_png(image: np.ndarray) -> bytes:
     return buffer.tobytes()
 
 
+MAX_RETRIES = 5
+
+
+def generate_with_retry(client, **kwargs):
+    """Call generate_content with backoff on 429s, metered against the daily
+    budget cap (costs.py). Raises BudgetExceededError once today's estimated
+    spend reaches HWP_GEMINI_DAILY_BUDGET_USD — no further billing.
+
+    Free-tier keys also allow only a handful of requests per minute; a
+    class-set batch must slow down and finish, not fail. Honors the
+    retryDelay the API suggests when present.
+    """
+    from google.genai import errors
+
+    from .costs import check_budget, record_usage
+
+    check_budget()
+    last_error: Exception | None = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.models.generate_content(**kwargs)
+            if getattr(response, "usage_metadata", None) is not None:
+                record_usage(response.usage_metadata)
+            return response
+        except errors.ClientError as exc:
+            if getattr(exc, "code", None) != 429 and "429" not in str(exc):
+                raise
+            last_error = exc
+            match = re.search(r"retry in ([0-9.]+)s", str(exc), re.IGNORECASE)
+            delay = float(match.group(1)) + 1 if match else 15 * (attempt + 1)
+            time.sleep(min(delay, 70))
+    raise last_error  # type: ignore[misc]
+
+
 class GeminiProvider:
     name = "gemini"
 
@@ -58,7 +94,8 @@ class GeminiProvider:
     def transcribe(self, image: np.ndarray) -> TranscriptionResult:
         from google.genai import types
 
-        response = self.client.models.generate_content(
+        response = generate_with_retry(
+            self.client,
             model=self.model,
             contents=[
                 types.Part.from_bytes(data=_encode_png(image), mime_type="image/png"),
@@ -69,6 +106,10 @@ class GeminiProvider:
                 response_mime_type="application/json",
                 response_schema=_Transcription,
                 temperature=0.0,
+                # Transcription is perception, not reasoning. Thinking tokens
+                # bill as output ($7.50/M) and tripled per-page cost in
+                # measurement — see docs/eval-results.md.
+                thinking_config=types.ThinkingConfig(thinking_level="minimal"),
             ),
         )
         data = _Transcription.model_validate(json.loads(response.text))
@@ -87,7 +128,8 @@ class GeminiProvider:
 
         if not verbatim.strip():
             return ""
-        response = self.client.models.generate_content(
+        response = generate_with_retry(
+            self.client,
             model=self.model,
             contents=[
                 "Verbatim transcription (student errors preserved):\n\n" + verbatim,
@@ -97,6 +139,7 @@ class GeminiProvider:
                 response_mime_type="application/json",
                 response_schema=_Normalization,
                 temperature=0.0,
+                thinking_config=types.ThinkingConfig(thinking_level="minimal"),
             ),
         )
         return _Normalization.model_validate(json.loads(response.text)).normalized

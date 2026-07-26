@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     claude_model: str = "claude-opus-5"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-flash-latest"
+    # Paid-tier pricing for gemini-3.6-flash (USD per 1M tokens, checked
+    # 2026-07-25 at ai.google.dev/gemini-api/docs/pricing). Thinking tokens
+    # bill as output.
+    gemini_price_input_per_m: float = 1.50
+    gemini_price_output_per_m: float = 7.50
+    # Hard daily spend ceiling for Gemini calls made by this app. When the
+    # estimated spend reaches this, calls raise instead of billing further.
+    gemini_daily_budget_usd: float = 2.00
 
     # Job queue: "inprocess" is the only alpha implementation. The interface in
     # jobs/queue.py is where a Redis-backed queue plugs in later.

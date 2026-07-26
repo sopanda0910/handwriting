@@ -24,6 +24,12 @@ class DeskewResult:
 
 
 def _ink_mask(gray: np.ndarray) -> np.ndarray:
+    # Ink is the minority class. If the page is light-on-dark (inverted scan),
+    # flip it first so the adaptive threshold always looks for dark ink —
+    # otherwise every glyph-level measurement downstream is silently poisoned.
+    _, otsu_dark = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    if (otsu_dark > 0).mean() > 0.5:  # the "dark" side is the background
+        gray = 255 - gray
     # Adaptive threshold copes with uneven classroom-photo lighting.
     mask = cv2.adaptiveThreshold(
         gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 15

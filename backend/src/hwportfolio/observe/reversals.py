@@ -62,19 +62,52 @@ def _stem_side(mask: np.ndarray) -> tuple[str, float] | None:
     return ("left", left_cover) if left_cover > right_cover else ("right", right_cover)
 
 
-def classify_glyph(glyph: Glyph, xheight: float) -> ObservationCandidate | None:
-    if xheight <= 0 or glyph.h < xheight * 1.25:
-        return None  # bowl+stem letters are taller than the x-height body
-    hole = _hole_centroid(glyph.mask)
+MIN_ANALYSIS_HEIGHT = 48  # px; below this, hole/stem geometry is too coarse
+
+
+def _prepare_mask(mask: np.ndarray) -> np.ndarray:
+    """Normalize a glyph mask for shape analysis.
+
+    Small glyphs (low-res photos, young writers) are upscaled so hole and stem
+    geometry has enough pixels to be meaningful, then lightly closed to seal
+    hairline bowl gaps — K-2 writers often don't quite close the loop of a b/d.
+    """
+    h = mask.shape[0]
+    if h < MIN_ANALYSIS_HEIGHT:
+        scale = MIN_ANALYSIS_HEIGHT / max(h, 1)
+        mask = cv2.resize(mask, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    return mask
+
+
+def classify_shape(mask: np.ndarray) -> tuple[str, float] | None:
+    """Classify a single glyph mask as a b/d/p/q shape, or None.
+
+    Returns (shape, confidence). Shared by the pipeline and the evaluation
+    harness so the number we measure is the number we ship.
+    """
+    mask = _prepare_mask(mask)
+    hole = _hole_centroid(mask)
     if hole is None:
         return None
-    stem = _stem_side(glyph.mask)
+    stem = _stem_side(mask)
     if stem is None:
         return None
     side, coverage = stem
     _, hole_y = hole
-    bowl_pos = "bottom" if hole_y > glyph.h / 2 else "top"
-    shape = _SHAPE[(side, bowl_pos)]
+    bowl_pos = "bottom" if hole_y > mask.shape[0] / 2 else "top"
+    return _SHAPE[(side, bowl_pos)], coverage
+
+
+def classify_glyph(glyph: Glyph, xheight: float) -> ObservationCandidate | None:
+    if xheight <= 0 or glyph.h < xheight * 1.25:
+        return None  # bowl+stem letters are taller than the x-height body
+    result = classify_shape(glyph.mask)
+    if result is None:
+        return None
+    shape, coverage = result
+    side = "left" if shape in ("b", "p") else "right"
+    bowl_pos = "bottom" if shape in ("b", "d") else "top"
     return ObservationCandidate(
         type="reversal_candidate",
         magnitude=coverage,  # stem coverage doubles as detection confidence
