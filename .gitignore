@@ -1,2 +1,11 @@
 .venv
 .claude/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+hwp.db
+storage/
+.env
+node_modules/
+frontend/dist/

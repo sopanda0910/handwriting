@@ -1,0 +1,45 @@
+# Skill taxonomy v1 — curriculum-anchored constructs (GOALS §6, open question 2).
+# Own taxonomy for the alpha, structured so a CCSS or curriculum crosswalk can
+# be added later without renaming keys. Versioned: additive changes bump the
+# minor; renames/removals require a new file and a migration.
+version: "1.0"
+skills:
+  - key: letter_formation.reversals.bd
+    label: "b/d letter reversals"
+    category: letter_formation
+  - key: letter_formation.reversals.pq
+    label: "p/q letter reversals"
+    category: letter_formation
+  - key: letter_formation.reversals.digits
+    label: "Digit reversals"
+    category: letter_formation
+  - key: letter_formation.baseline
+    label: "Baseline adherence"
+    category: letter_formation
+  - key: letter_formation.size_consistency
+    label: "Letter size consistency"
+    category: letter_formation
+  - key: letter_formation.proportion
+    label: "Ascender/descender proportion"
+    category: letter_formation
+  - key: letter_formation.slant
+    label: "Slant consistency"
+    category: letter_formation
+  - key: spacing.word_boundaries
+    label: "Word spacing"
+    category: spacing
+  - key: spelling.stage.pre_phonetic
+    label: "Pre-phonetic spelling stage"
+    category: spelling
+  - key: spelling.stage.semi_phonetic
+    label: "Semi-phonetic spelling stage"
+    category: spelling
+  - key: spelling.stage.phonetic
+    label: "Phonetic spelling stage"
+    category: spelling
+  - key: spelling.stage.transitional
+    label: "Transitional spelling stage"
+    category: spelling
+  - key: spelling.stage.conventional
+    label: "Conventional spelling stage"
+    category: spelling

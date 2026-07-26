@@ -1,0 +1,39 @@
+[project]
+name = "hwportfolio"
+version = "0.1.0a0"
+description = "Longitudinal handwriting-and-work portfolio for K-5 classrooms (alpha)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.2",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "pillow>=10.3",
+    "python-multipart>=0.0.9",
+    "anthropic>=0.40",
+    "google-genai>=1.0",
+    "pyyaml>=6.0",
+    "qrcode>=7.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+hwp = "hwportfolio.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
